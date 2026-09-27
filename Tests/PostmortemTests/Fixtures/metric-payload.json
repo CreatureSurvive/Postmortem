@@ -1,0 +1,110 @@
+{
+  "memoryMetrics" : {
+    "peakMemoryUsage" : "310000 kB",
+    "averageSuspendedMemory" : {
+      "averageValue" : "120000 kB",
+      "standardDeviation" : 12.5,
+      "sampleCount" : 500
+    }
+  },
+  "metaData" : {
+    "appBuildVersion" : "42",
+    "pid" : 1234,
+    "regionFormat" : "US",
+    "isTestFlightApp" : false,
+    "osVersion" : "iPhone OS 18.2 (22C152)",
+    "deviceType" : "iPhone16,1",
+    "bundleIdentifier" : "com.example.demo",
+    "platformArchitecture" : "arm64e",
+    "lowPowerModeEnabled" : false
+  },
+  "applicationExitMetrics" : {
+    "backgroundExitData" : {
+      "cumulativeBackgroundTaskAssertionTimeoutExitCount" : 2,
+      "cumulativeNormalAppExitCount" : 10,
+      "cumulativeMemoryPressureExitCount" : 5,
+      "cumulativeSuspendedWithLockedFileExitCount" : 1
+    },
+    "foregroundExitData" : {
+      "cumulativeBadAccessExitCount" : 1,
+      "cumulativeAppWatchdogExitCount" : 3,
+      "cumulativeNormalAppExitCount" : 30,
+      "cumulativeMemoryResourceLimitExitCount" : 2
+    }
+  },
+  "networkTransferMetrics" : {
+    "cumulativeCellularDownload" : "20 kB",
+    "cumulativeWifiDownload" : "880000 kB",
+    "cumulativeCellularUpload" : "10 kB",
+    "cumulativeWifiUpload" : "1200 kB"
+  },
+  "cpuMetrics" : {
+    "cumulativeCPUTime" : "250 sec",
+    "cumulativeCPUInstructions" : "12000000 kiloinstructions"
+  },
+  "diskIOMetrics" : {
+    "cumulativeLogicalWrites" : "52000 kB"
+  },
+  "applicationLaunchMetrics" : {
+    "histogrammedTimeToFirstDrawKey" : {
+      "histogramNumBuckets" : 2,
+      "histogramValue" : {
+        "0" : {
+          "bucketCount" : 40,
+          "bucketStart" : "300 ms",
+          "bucketEnd" : "400 ms"
+        },
+        "1" : {
+          "bucketCount" : 7,
+          "bucketStart" : "400 ms",
+          "bucketEnd" : "900 ms"
+        }
+      }
+    },
+    "histogrammedResumeTime" : {
+      "histogramNumBuckets" : 2,
+      "histogramValue" : {
+        "0" : {
+          "bucketCount" : 40,
+          "bucketStart" : "50 ms",
+          "bucketEnd" : "60 ms"
+        },
+        "1" : {
+          "bucketCount" : 7,
+          "bucketStart" : "60 ms",
+          "bucketEnd" : "200 ms"
+        }
+      }
+    }
+  },
+  "applicationTimeMetrics" : {
+    "cumulativeForegroundTime" : "3600 sec",
+    "cumulativeBackgroundTime" : "600 sec",
+    "cumulativeBackgroundAudioTime" : "0 sec",
+    "cumulativeBackgroundLocationTime" : "0 sec"
+  },
+  "timeStampEnd" : "2026-09-22 09:13:20",
+  "animationMetrics" : {
+    "hitchTimeRatio" : "2 ms per s",
+    "scrollHitchTimeRatio" : "4 ms per s"
+  },
+  "applicationResponsivenessMetrics" : {
+    "histogrammedAppHangTime" : {
+      "histogramNumBuckets" : 2,
+      "histogramValue" : {
+        "0" : {
+          "bucketCount" : 40,
+          "bucketStart" : "250 ms",
+          "bucketEnd" : "500 ms"
+        },
+        "1" : {
+          "bucketCount" : 7,
+          "bucketStart" : "500 ms",
+          "bucketEnd" : "2000 ms"
+        }
+      }
+    }
+  },
+  "appVersion" : "1.2.0",
+  "timeStampBegin" : "2026-09-21 09:13:20"
+}

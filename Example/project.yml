@@ -1,0 +1,53 @@
+name: PostmortemDemo
+options:
+  bundleIdPrefix: com.creaturesurvive
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    DEVELOPMENT_TEAM: RUMWXF5QY3
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  Postmortem:
+    path: ..
+targets:
+  PostmortemDemo:
+    type: application
+    platform: iOS
+    sources:
+      - PostmortemDemo
+      - path: ../Tests/PostmortemTests/Fixtures
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: Postmortem
+    info:
+      path: PostmortemDemo/Info.plist
+      properties:
+        CFBundleDisplayName: Postmortem
+        UILaunchScreen: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.creaturesurvive.PostmortemDemo
+  PostmortemDemoUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [PostmortemDemoUITests]
+    dependencies:
+      - target: PostmortemDemo
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.creaturesurvive.PostmortemDemoUITests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: PostmortemDemo
+schemes:
+  PostmortemDemo:
+    build:
+      targets:
+        PostmortemDemo: all
+        PostmortemDemoUITests: [test]
+    test:
+      targets: [PostmortemDemoUITests]
