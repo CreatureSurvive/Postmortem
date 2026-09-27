@@ -25,8 +25,11 @@ final class PostmortemUITests: XCTestCase {
         app.staticTexts["EXC_BREAKPOINT (SIGTRAP)"].firstMatch.tap()
         let appSymbol = app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'demoLoadUserProfile'")).firstMatch
         XCTAssertTrue(appSymbol.waitForExistence(timeout: 5), "app frames should resolve to their Swift names")
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'demoRefreshLibrary'")).firstMatch.exists)
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'force-unwrapping nil'")).firstMatch.exists)
+        let summary = app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'force-unwrapping nil'")).firstMatch
+        XCTAssertTrue(summary.exists, "the crash is explained")
+        // Rows below the fold are created as the list scrolls.
+        let caller = app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'demoRefreshLibrary'")).firstMatch
+        XCTAssertTrue(scrollTo(caller, in: app), "the caller resolves too")
         let uikit = app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'UIApplicationMain'")).firstMatch
         XCTAssertTrue(scrollTo(uikit, in: app), "UIKit frames resolve too")
         app.navigationBars.buttons.firstMatch.tap()

@@ -22,7 +22,8 @@ public struct DiagnosticDetailView: View {
                         .foregroundStyle(.secondary)
                     Text(diagnostic.title)
                         .font(.title3.bold())
-                    Text(diagnostic.summary)
+                    // Summaries use Markdown code spans for names like `fatalError`.
+                    Text((try? AttributedString(markdown: diagnostic.summary, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(diagnostic.summary))
                         .font(.callout)
                 }
                 .padding(.vertical, 4)

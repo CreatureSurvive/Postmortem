@@ -121,8 +121,24 @@ struct DiagnosticRow: View {
         let frames = diagnostic.primaryFrames
         let interesting = frames.first { !DiagnosticReport.isSystemBinary($0.binaryName) } ?? frames.first
         guard let interesting else { return "No stack" }
+        let resolved = Self.symbolicator.symbolicate(interesting)
+        let module = (interesting.binaryName ?? "?").components(separatedBy: ".").first ?? "?"
+        if let symbol = resolved.symbol { return "\(Self.compact(symbol, module: module))  ·  \(module)" }
         return "\(interesting.binaryName ?? "?") +\(interesting.offsetIntoBinaryTextSegment ?? 0)"
     }
+
+    /// `demoLoad()` for `@objc MyApp.demoLoad() -> Swift.Int32`.
+    static func compact(_ symbol: String, module: String) -> String {
+        var name = symbol
+        for prefix in ["@objc ", "merged ", "\(module)."] where name.hasPrefix(prefix) {
+            name.removeFirst(prefix.count)
+        }
+        if let arrow = name.range(of: " -> ") { name = String(name[..<arrow.lowerBound]) }
+        return name
+    }
+
+    /// Created once: it reads the loaded images, and symbols are cached.
+    private static let symbolicator = Symbolicator()
 }
 
 struct MetricRow: View {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2
+
+- `ReportStore.diagnostics()` returns the newest reporting period first. Payloads stored in the
+  same second used to come back in an arbitrary order.
+- Crash summaries render their code spans (`fatalError`, `as!`) instead of showing backticks.
+- List rows show the top frame's symbol when it resolves on device.
+- UI tests capture the README screenshots.
+
 ## 1.0.1
 
 - Fixed a stack overflow when a payload with a very deep call stack (such as a runaway recursion

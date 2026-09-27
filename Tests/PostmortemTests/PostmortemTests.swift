@@ -355,6 +355,18 @@ struct ReportStoreTests {
         ReportStore(directory: FileManager.default.temporaryDirectory.appending(path: "PostmortemTests-\(UUID().uuidString)"), maximumCount: maximumCount)
     }
 
+    @Test func diagnosticsAreNewestPeriodFirst() async throws {
+        let store = makeStore()
+        defer { try? FileManager.default.removeItem(at: store.directory) }
+        func payload(_ reason: String, end: String) -> Data {
+            Data(#"{"timeStampEnd":"\#(end)","crashDiagnostics":[{"diagnosticMetaData":{"exceptionType":1,"signal":11,"terminationReason":"\#(reason)"}}]}"#.utf8)
+        }
+        // Stored newest first, then an older one, in the same second.
+        #expect(try await store.add(payload("newer", end: "2026-09-27 00:00:00"), kind: .diagnostic))
+        #expect(try await store.add(payload("older", end: "2026-09-20 00:00:00"), kind: .diagnostic))
+        #expect(try await store.diagnostics().map { $0.metadata.terminationReason } == ["newer", "older"])
+    }
+
     @Test func storesDeduplicatesAndParses() async throws {
         let store = makeStore()
         defer { try? FileManager.default.removeItem(at: store.directory) }

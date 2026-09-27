@@ -104,7 +104,8 @@ public actor ReportStore {
             .sorted { $0.receivedAt == $1.receivedAt ? $0.id > $1.id : $0.receivedAt > $1.receivedAt }
     }
 
-    /// Every stored diagnostic, newest first, deduplicated across payloads.
+    /// Every stored diagnostic, newest reporting period first, deduplicated
+    /// across payloads.
     public func diagnostics() throws -> [Diagnostic] {
         var seen = Set<String>()
         var result: [Diagnostic] = []
@@ -115,7 +116,13 @@ public actor ReportStore {
                 result.append(diagnostic)
             }
         }
-        return result
+        // Newest reporting period first; payloads received later break ties.
+        return result.enumerated()
+            .sorted { a, b in
+                let (dateA, dateB) = (a.element.periodEnd ?? .distantPast, b.element.periodEnd ?? .distantPast)
+                return dateA == dateB ? a.offset < b.offset : dateA > dateB
+            }
+            .map(\.element)
     }
 
     /// Every stored metric payload, newest first.
