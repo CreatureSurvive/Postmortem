@@ -99,11 +99,28 @@ public final class Symbolicator: Sendable {
         for index in 0..<_dyld_image_count() {
             guard let header = _dyld_get_image_header(index), let uuid = uuid(of: header) else { continue }
             let path = String(cString: _dyld_get_image_name(index))
-            let inCache = header.pointee.flags & 0x8000_0000 != 0 // MH_DYLIB_IN_CACHE
+            let inCache = header.pointee.flags & 0x8000_0000 != 0 || isInSharedCache(UInt(bitPattern: header)) // MH_DYLIB_IN_CACHE
             result[uuid] = Image(header: UInt(bitPattern: header), slide: _dyld_get_image_vmaddr_slide(index), path: path, inSharedCache: inCache)
         }
         return result
     }
+
+    /// Shared cache images keep their symbol tables in a separate file, so
+    /// their `LC_SYMTAB` offsets don't point into mapped memory.
+    static func isInSharedCache(_ address: UInt) -> Bool {
+        guard let range = sharedCacheRange else { return false }
+        return address >= range.start && address - range.start < range.length
+    }
+
+    private typealias CacheRangeFunction = @convention(c) (UnsafeMutablePointer<Int>) -> UnsafeRawPointer?
+
+    private static let sharedCacheRange: (start: UInt, length: UInt)? = {
+        // libdyld exports this, but no SDK header declares it.
+        guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "_dyld_get_shared_cache_range") else { return nil } // RTLD_DEFAULT
+        var length = 0
+        guard let start = unsafeBitCast(symbol, to: CacheRangeFunction.self)(&length), length > 0 else { return nil }
+        return (UInt(bitPattern: start), UInt(length))
+    }()
 
     static func uuid(of header: UnsafePointer<mach_header>) -> UUID? {
         var result: UUID?
@@ -155,6 +172,14 @@ enum SymbolTable {
             return true
         }
         guard let symtab, let linkedit, symtab.nsyms > 0 else { return nil }
+        // Only read tables that lie inside the mapped __LINKEDIT segment.
+        let linkeditEnd = UInt64(linkedit.fileoff) + UInt64(linkedit.filesize)
+        let symbolsEnd = UInt64(symtab.symoff) + UInt64(symtab.nsyms) * UInt64(MemoryLayout<nlist_64>.stride)
+        let stringsEnd = UInt64(symtab.stroff) + UInt64(symtab.strsize)
+        guard UInt64(symtab.symoff) >= linkedit.fileoff, symbolsEnd <= linkeditEnd,
+              UInt64(symtab.stroff) >= linkedit.fileoff, stringsEnd <= linkeditEnd,
+              linkedit.filesize <= linkedit.vmsize
+        else { return nil }
         let linkeditBase = Int(linkedit.vmaddr) + slide - Int(linkedit.fileoff)
         guard let symbols = UnsafePointer<nlist_64>(bitPattern: linkeditBase + Int(symtab.symoff)),
               let strings = UnsafePointer<CChar>(bitPattern: linkeditBase + Int(symtab.stroff))
@@ -173,7 +198,11 @@ enum SymbolTable {
             }
         }
         guard let bestIndex, UInt32(symbols[bestIndex].n_un.n_strx) < symtab.strsize else { return nil }
-        let name = String(cString: strings.advanced(by: Int(symbols[bestIndex].n_un.n_strx)))
+        let offset = Int(symbols[bestIndex].n_un.n_strx)
+        let maxLength = Int(symtab.strsize) - offset
+        let name = strings.advanced(by: offset).withMemoryRebound(to: UInt8.self, capacity: maxLength) { bytes in
+            String(decoding: UnsafeBufferPointer(start: bytes, count: strnlen(strings.advanced(by: offset), maxLength)), as: UTF8.self)
+        }
         guard !name.isEmpty else { return nil }
         return (name, UInt(Int(bestValue) + slide))
     }

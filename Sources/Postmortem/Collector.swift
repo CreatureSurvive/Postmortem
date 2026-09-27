@@ -48,7 +48,9 @@ public final class PostmortemCollector: NSObject, MXMetricManagerSubscriber, @un
         let manager = MXMetricManager.shared
         manager.add(self)
         ingest(manager.pastDiagnosticPayloads.map { $0.jsonRepresentation() }, kind: .diagnostic)
+        #if !os(macOS) || compiler(>=6.2)
         ingest(manager.pastPayloads.map { $0.jsonRepresentation() }, kind: .metric)
+        #endif
     }
 
     /// Unsubscribes from MetricKit.
@@ -61,9 +63,12 @@ public final class PostmortemCollector: NSObject, MXMetricManagerSubscriber, @un
         ingest(payloads.map { $0.jsonRepresentation() }, kind: .diagnostic)
     }
 
+    // Metric payloads are available on macOS from the macOS 26 SDK (Xcode 26).
+    #if !os(macOS) || compiler(>=6.2)
     public func didReceive(_ payloads: [MXMetricPayload]) {
         ingest(payloads.map { $0.jsonRepresentation() }, kind: .metric)
     }
+    #endif
 
     private func ingest(_ payloads: [Data], kind: StoredPayload.Kind) {
         guard !payloads.isEmpty else { return }
