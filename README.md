@@ -1,5 +1,11 @@
 # Postmortem
 
+[![CI](https://github.com/CreatureSurvive/Postmortem/actions/workflows/ci.yml/badge.svg)](https://github.com/CreatureSurvive/Postmortem/actions/workflows/ci.yml)
+[![Swift 6.0+](https://img.shields.io/badge/Swift-6.0+-F05138?logo=swift&logoColor=white)](https://swift.org)
+[![Platforms](https://img.shields.io/badge/platforms-iOS%20%7C%20macOS%20%7C%20tvOS%20%7C%20watchOS%20%7C%20visionOS-blue)](#requirements)
+[![Swift Package Manager](https://img.shields.io/badge/SwiftPM-compatible-brightgreen)](#installation)
+[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+
 Crash, hang and performance reports from MetricKit, readable on the device, with no third-party
 service. It stores every payload, explains each crash in plain language, symbolicates stacks on
 device, and includes a SwiftUI viewer for your debug menu.
@@ -100,15 +106,35 @@ PostmortemCollector.shared.onReceive = { kind, json in
 
 ## Installation
 
+Add Postmortem to your `Package.swift`:
+
 ```swift
-.package(url: "https://github.com/CreatureSurvive/Postmortem.git", from: "1.0.0")
+dependencies: [
+    .package(url: "https://github.com/CreatureSurvive/Postmortem.git", from: "1.0.0"),
+],
+targets: [
+    .target(name: "MyApp", dependencies: ["Postmortem"]),
+]
 ```
 
-- Requires Swift 6.
-- Collection needs MetricKit: iOS 17, macOS 14 or visionOS 1.
-- The models, store and viewers also build on tvOS 17. Viewers aren't available on watchOS.
-  That way a tvOS app can show reports gathered elsewhere, or a companion app can parse
-  uploaded payloads.
+Or in Xcode, choose **File › Add Package Dependencies…** and enter
+`https://github.com/CreatureSurvive/Postmortem`.
+
+### Requirements
+
+| Platform | Minimum |
+| --- | --- |
+| iOS | 17.0 |
+| macOS | 14.0 |
+| tvOS | 17.0 |
+| watchOS | 10.0 |
+| visionOS | 1.0 |
+
+Swift 6.0 (Xcode 16) or later, in Swift 6 language mode. No third-party dependencies.
+
+Collecting reports needs MetricKit, so it runs on iOS, macOS and visionOS. The models and store
+also build on tvOS and watchOS, and the viewers on tvOS, so a tvOS app can show reports gathered
+elsewhere and a companion app can parse uploaded payloads.
 
 ## Testing
 
@@ -147,6 +173,15 @@ xcodebuild test -project PostmortemDemo.xcodeproj -scheme PostmortemDemo \
 - **Event times:** MetricKit reports only the period a diagnostic was delivered in, not the
   exact time of the event.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md). Releases follow [Semantic Versioning](https://semver.org).
+
+## Contributing
+
+Issues and pull requests are welcome. Please run `swift test` before opening a pull request, and
+add tests for new behavior.
+
 ## License
 
-MIT
+Available under the MIT license. See [LICENSE](LICENSE) for details.
