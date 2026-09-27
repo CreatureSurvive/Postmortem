@@ -74,6 +74,9 @@ public struct StackTrace: Sendable, Hashable, Codable {
     }
 
     /// One frame: a return address in a binary.
+    ///
+    /// Frames of a runaway recursion can nest thousands deep, so copying,
+    /// comparing, hashing and freeing them never recurses.
     public struct Frame: Sendable, Hashable, Codable {
         public var binaryUUID: UUID?
         public var binaryName: String?
@@ -84,7 +87,18 @@ public struct StackTrace: Sendable, Hashable, Codable {
         public var address: UInt64?
         /// How many samples included this frame.
         public var sampleCount: Int?
-        public var subFrames: [Frame]
+        /// The frames below this one: for crashes, its caller.
+        public var subFrames: [Frame] {
+            get { children.frames }
+            set {
+                if isKnownUniquelyReferenced(&children) {
+                    children.frames = newValue
+                } else {
+                    children = Children(newValue)
+                }
+            }
+        }
+        private var children: Children
 
         public init(
             binaryUUID: UUID? = nil,
@@ -99,7 +113,60 @@ public struct StackTrace: Sendable, Hashable, Codable {
             self.offsetIntoBinaryTextSegment = offsetIntoBinaryTextSegment
             self.address = address
             self.sampleCount = sampleCount
-            self.subFrames = subFrames
+            self.children = Children(subFrames)
+        }
+
+        public static func == (lhs: Frame, rhs: Frame) -> Bool {
+            var pairs = [(lhs, rhs)]
+            while let (a, b) = pairs.popLast() {
+                if a.children === b.children, a.hasSameFields(as: b) { continue }
+                guard a.hasSameFields(as: b), a.subFrames.count == b.subFrames.count else { return false }
+                pairs.append(contentsOf: zip(a.subFrames, b.subFrames))
+            }
+            return true
+        }
+
+        public func hash(into hasher: inout Hasher) {
+            var stack = [self]
+            while let frame = stack.popLast() {
+                hasher.combine(frame.binaryUUID)
+                hasher.combine(frame.binaryName)
+                hasher.combine(frame.offsetIntoBinaryTextSegment)
+                hasher.combine(frame.address)
+                hasher.combine(frame.sampleCount)
+                hasher.combine(frame.subFrames.count)
+                stack.append(contentsOf: frame.subFrames)
+            }
+        }
+
+        private func hasSameFields(as other: Frame) -> Bool {
+            binaryUUID == other.binaryUUID && binaryName == other.binaryName
+                && offsetIntoBinaryTextSegment == other.offsetIntoBinaryTextSegment
+                && address == other.address && sampleCount == other.sampleCount
+        }
+
+        /// Holds sub-frames so a deep tree can be freed with a loop instead of
+        /// recursive deallocation, which can overflow a thread's stack.
+        private final class Children: @unchecked Sendable {
+            var frames: [Frame]
+
+            init(_ frames: [Frame]) {
+                self.frames = frames
+            }
+
+            deinit {
+                guard !frames.isEmpty else { return }
+                var pending = frames
+                frames = []
+                while var frame = pending.popLast() {
+                    // Take the children of any frame this is the last owner
+                    // of, so freeing it frees at most one level.
+                    if isKnownUniquelyReferenced(&frame.children) {
+                        pending.append(contentsOf: frame.children.frames)
+                        frame.children.frames = []
+                    }
+                }
+            }
         }
 
         enum CodingKeys: String, CodingKey {
@@ -113,7 +180,7 @@ public struct StackTrace: Sendable, Hashable, Codable {
             offsetIntoBinaryTextSegment = Self.decodeUInt64(container, .offsetIntoBinaryTextSegment)
             address = Self.decodeUInt64(container, .address)
             sampleCount = try? container.decode(Int.self, forKey: .sampleCount)
-            subFrames = (try? container.decode([Frame].self, forKey: .subFrames)) ?? []
+            children = Children((try? container.decode([Frame].self, forKey: .subFrames)) ?? [])
         }
 
         public func encode(to encoder: any Encoder) throws {

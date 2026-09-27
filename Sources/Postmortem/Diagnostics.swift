@@ -17,16 +17,26 @@ public struct DiagnosticPayload: Sendable, Hashable {
     /// Parses the JSON produced by `MXDiagnosticPayload.jsonRepresentation()`.
     public init(json data: Data) throws {
         let root = try JSONParser.parse(data)
+        let result = Result { try Self.parse(root) }
+        // Call stack trees can nest thousands of levels; free them with a loop.
+        JSONValue.release(consume root)
+        self = try result.get()
+    }
+
+    private static func parse(_ root: JSONValue) throws -> DiagnosticPayload {
         guard let object = root.objectValue else { throw PostmortemError.invalidPayload("the payload isn't a JSON object") }
-        timeStampBegin = object["timeStampBegin"]?.stringValue.flatMap(PayloadDate.parse)
-        timeStampEnd = object["timeStampEnd"]?.stringValue.flatMap(PayloadDate.parse)
+        let end = object["timeStampEnd"]?.stringValue.flatMap(PayloadDate.parse)
         var diagnostics: [Diagnostic] = []
         for kind in Diagnostic.Kind.allCases {
             for entry in object[kind.payloadKey]?.arrayValue ?? [] {
-                diagnostics.append(try Diagnostic(kind: kind, json: entry, periodEnd: timeStampEnd))
+                diagnostics.append(try Diagnostic(kind: kind, json: entry, periodEnd: end))
             }
         }
-        self.diagnostics = diagnostics
+        return DiagnosticPayload(
+            timeStampBegin: object["timeStampBegin"]?.stringValue.flatMap(PayloadDate.parse),
+            timeStampEnd: end,
+            diagnostics: diagnostics
+        )
     }
 }
 
@@ -84,13 +94,16 @@ public struct Diagnostic: Sendable, Hashable, Identifiable {
     /// The end of the reporting period the diagnostic was delivered in. The
     /// exact time of the event isn't reported.
     public var periodEnd: Date?
-    /// The diagnostic as MetricKit reported it.
+    /// The diagnostic as MetricKit reported it, except `callStackTree`,
+    /// which is parsed into ``stackTrace``.
     public var raw: JSONValue
 
     init(kind: Kind, json: JSONValue, periodEnd: Date?) throws {
         guard let object = json.objectValue else { throw PostmortemError.invalidPayload("a \(kind.payloadKey) entry isn't an object") }
         self.kind = kind
-        self.raw = json
+        var shallow = object
+        shallow["callStackTree"] = nil
+        self.raw = .object(shallow)
         self.periodEnd = periodEnd
         metadata = DiagnosticMetadata(json: object["diagnosticMetaData"] ?? .object([:]))
         stackTrace = object["callStackTree"].map(StackTrace.init(json:))

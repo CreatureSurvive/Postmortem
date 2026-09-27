@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.1
+
+- Fixed a stack overflow when a payload with a very deep call stack (such as a runaway recursion
+  crash) was freed, compared or hashed on a background thread. Frame trees and parsed JSON are
+  now released, compared and hashed with loops.
+- `Diagnostic.raw` no longer includes `callStackTree`, which is parsed into `stackTrace`.
+- The symbolicator only reads symbol tables that lie inside an image's mapped `__LINKEDIT`
+  segment, and skips shared cache images by address as well as by header flag.
+- Builds with the macOS 15 SDK (Xcode 16.4), where MetricKit's metric payloads are unavailable
+  on macOS. Metric collection on macOS needs the macOS 26 SDK.
+
 ## 1.0.0
 
 - Initial release: typed parsing of MetricKit diagnostic and metric payloads (tested against

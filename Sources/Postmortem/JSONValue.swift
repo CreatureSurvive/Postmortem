@@ -89,6 +89,22 @@ public enum JSONValue: Sendable, Hashable, Codable {
         }
     }
 
+    /// Frees a value with a loop instead of recursive deallocation, which
+    /// can overflow a thread's stack for deeply nested values such as the
+    /// call stack tree of a runaway recursion.
+    static func release(_ value: consuming JSONValue) {
+        var pending = [consume value]
+        while let next = pending.popLast() {
+            // Children stay owned by `pending` while their container is
+            // freed, so each step frees at most one level.
+            switch next {
+            case .array(let items): pending.append(contentsOf: items)
+            case .object(let members): pending.append(contentsOf: members.values)
+            default: break
+            }
+        }
+    }
+
     /// Decodes this value as `type`.
     public func decode<T: Decodable>(_ type: T.Type) throws -> T {
         try JSONDecoder().decode(type, from: JSONEncoder().encode(self))

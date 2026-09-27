@@ -28,6 +28,15 @@ enum JSONParser {
         mutating func parseDocument() throws -> JSONValue {
             var stack: [Container] = []
             var result: JSONValue?
+            defer {
+                // After an error, free partial containers without recursion.
+                while let container = stack.popLast() {
+                    switch container {
+                    case .array(let items): JSONValue.release(.array(items))
+                    case .object(let members, _): JSONValue.release(.object(members))
+                    }
+                }
+            }
 
             func fail(_ message: String) -> PostmortemError {
                 .invalidPayload("\(message) at byte \(index)")

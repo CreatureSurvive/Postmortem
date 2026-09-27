@@ -97,6 +97,34 @@ struct DiagnosticPayloadTests {
         #expect(payload.diagnostics.first?.primaryFrames.count == 1001, "Foundation's parser stops at 512 levels")
         #expect(throws: (any Error).self) { try JSONSerialization.jsonObject(with: Data(json.utf8)) }
     }
+
+    /// Parsing, comparing, hashing and freeing a stack as deep as
+    /// `StackTrace.maximumDepth` on a thread with a small (256 KB) stack, like
+    /// the background threads a collector runs on. Recursive teardown of the
+    /// tree would overflow it.
+    @Test func deepStacksAreSafeOnSmallThreadStacks() async throws {
+        var frame = #"{"binaryName":"Deep","offsetIntoBinaryTextSegment":1}"#
+        for _ in 0..<StackTrace.maximumDepth { frame = #"{"binaryName":"Deep","offsetIntoBinaryTextSegment":1,"subFrames":["# + frame + "]}" }
+        let data = Data((#"{"crashDiagnostics":[{"callStackTree":{"callStackPerThread":true,"callStacks":[{"threadAttributed":true,"callStackRootFrames":["# + frame + "]}]}}]}").utf8)
+
+        let result: Result<Int, any Error> = await withCheckedContinuation { continuation in
+            let thread = Thread {
+                continuation.resume(returning: Result {
+                    let first = try DiagnosticPayload(json: data)
+                    let second = try DiagnosticPayload(json: data)
+                    #expect(first == second)
+                    #expect(first.hashValue == second.hashValue)
+                    var edited = second.diagnostics[0].stackTrace!
+                    edited.threads[0].rootFrames[0].subFrames[0].binaryName = "Edited"
+                    #expect(edited != first.diagnostics[0].stackTrace!)
+                    return first.diagnostics[0].primaryFrames.count
+                })
+            }
+            thread.stackSize = 256 * 1024
+            thread.start()
+        }
+        #expect(try result.get() == 2048, "backtraces stop at 2048 frames")
+    }
 }
 
 @Suite("Crash explanations")
